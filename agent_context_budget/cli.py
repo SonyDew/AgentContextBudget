@@ -13,6 +13,8 @@ MAX_BYTES = 2 * 1024 * 1024
 
 
 def discover(root):
+    if root.is_symlink():
+        raise ValueError("Symbolic link input is not supported")
     if root.is_file():
         if root.name not in NAMES:
             raise ValueError("Unsupported instruction filename")
@@ -20,7 +22,9 @@ def discover(root):
     if not root.is_dir():
         raise ValueError("Input path is not a readable file or directory")
     found = []
-    for base, dirs, names in os.walk(root, followlinks=False):
+    def onerror(error):
+        raise ValueError("Cannot traverse input directory") from error
+    for base, dirs, names in os.walk(root, followlinks=False, onerror=onerror):
         dirs[:] = sorted(d for d in dirs if d not in SKIP and not (Path(base) / d).is_symlink())
         for name in sorted(names):
             path = Path(base) / name
@@ -41,9 +45,12 @@ def analyze(root):
     repeated = {}
     for path in discover(root):
         try:
+            if path.is_symlink():
+                raise ValueError("Symbolic link input is not supported")
             if path.stat().st_size > MAX_BYTES:
                 raise ValueError("Instruction file exceeds 2 MiB limit")
-            raw = path.read_bytes()
+            with path.open("rb") as stream:
+                raw = stream.read(MAX_BYTES + 1)
             if len(raw) > MAX_BYTES:
                 raise ValueError("Instruction file exceeds 2 MiB limit")
             content = raw.decode("utf-8-sig")
