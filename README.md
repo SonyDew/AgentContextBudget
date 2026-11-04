@@ -30,3 +30,11 @@ python -m unittest discover -s tests -v
 ## Development report — morning, November 4, 2026
 
 Nine unit tests passed against the local implementation; the published files have not been independently re-run from a GitHub checkout on Python 3.13.5 under Linux. The tests cover directory discovery, duplicate detection, JSON output, invalid UTF-8, file-size limits, symlink exclusion, and non-destructive reads. Further edge-case review remains.
+
+## Development report — afternoon, November 4, 2026
+
+The afternoon review found three problems: an explicitly supplied symlink was followed, file reads were not bounded if a file grew after the size check, and directory traversal errors could be silently skipped. Explicit symlink inputs are now rejected, reads stop after 2 MiB plus one byte, and traversal failures produce an error.
+
+Nine additional tests passed locally on Python 3.13 under Linux. They cover symlinks, nested discovery, size boundaries, duplicate normalization, traversal errors, JSON output, and unchanged source bytes. The full repository test suite and an installed-wheel check were not run in this review because the local environment could not resolve github.com for a checkout. The updated source and tests were committed through the GitHub integration.
+
+Known limitations: token counts are estimates; paragraph matching is exact after normalization, not semantic. Paths in reports may expose sensitive directory names. A concurrent file replacement during scanning is not fully protected against, and the tool does not determine which instructions take precedence.
