@@ -38,3 +38,11 @@ The afternoon review found three problems: an explicitly supplied symlink was fo
 Nine additional tests passed locally on Python 3.13 under Linux. They cover symlinks, nested discovery, size boundaries, duplicate normalization, traversal errors, JSON output, and unchanged source bytes. The full repository test suite and an installed-wheel check were not run in this review because the local environment could not resolve github.com for a checkout. The updated source and tests were committed through the GitHub integration.
 
 Known limitations: token counts are estimates; paragraph matching is exact after normalization, not semantic. Paths in reports may expose sensitive directory names. A concurrent file replacement during scanning is not fully protected against, and the tool does not determine which instructions take precedence.
+
+## Development report — evening, November 4, 2026
+
+The evening review found a file-type race: a discovered instruction file could be replaced with a symbolic link before opening. The reader now uses `O_NOFOLLOW` where available and checks the opened descriptor with `fstat`. Nonblocking opens prevent a named pipe from hanging the scan. Files are still read with a 2 MiB plus one byte bound.
+
+Six evening regression tests passed on Python 3.13 under Linux, including symlink substitution, a named pipe, exact size boundaries, JSON output, and unchanged source bytes. These tests ran against a locally reconstructed copy of the modified module, not a complete GitHub checkout. The complete repository suite and installed-wheel CLI were not run in this session because direct GitHub cloning failed with a DNS resolution error. No stable release is claimed.
+
+The symlink protection depends on operating-system support for `O_NOFOLLOW`. Intermediate directory components may still change during traversal, and the tool is not suitable for scanning directories actively controlled by an adversary. Path names appear in reports and may contain sensitive information. Token counts are approximate; duplicate matching is textual rather than semantic.
