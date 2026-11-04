@@ -29,4 +29,4 @@ python -m unittest discover -s tests -v
 
 ## Development report — morning, November 4, 2026
 
-The initial CLI and nine unit tests were implemented and passed locally on Python 3.11 under Linux. The tests cover directory discovery, duplicate detection, JSON output, invalid UTF-8, file-size limits, symlink exclusion, and non-destructive reads. Further edge-case review remains.
+Nine unit tests passed against the local implementation; the published files have not been independently re-run from a GitHub checkout on Python 3.13.5 under Linux. The tests cover directory discovery, duplicate detection, JSON output, invalid UTF-8, file-size limits, symlink exclusion, and non-destructive reads. Further edge-case review remains.
