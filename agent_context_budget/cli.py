@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import re
+import stat
 import sys
 
 NAMES = {"AGENTS.md", "CLAUDE.md", "GEMINI.md", "copilot-instructions.md"}
@@ -40,22 +41,35 @@ def paragraphs(content):
             yield normalized
 
 
+def read_instruction(path):
+    """Read a regular file without following a symlink at its final component."""
+    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NONBLOCK", 0)
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        fd = os.open(path, flags)
+        with os.fdopen(fd, "rb") as stream:
+            info = os.fstat(stream.fileno())
+            if not stat.S_ISREG(info.st_mode):
+                raise ValueError("Instruction path is not a regular file")
+            if info.st_size > MAX_BYTES:
+                raise ValueError("Instruction file exceeds 2 MiB limit")
+            raw = stream.read(MAX_BYTES + 1)
+    except OSError as exc:
+        raise ValueError("Cannot read instruction file") from exc
+    if len(raw) > MAX_BYTES:
+        raise ValueError("Instruction file exceeds 2 MiB limit")
+    try:
+        return raw, raw.decode("utf-8-sig")
+    except UnicodeError as exc:
+        raise ValueError("Cannot read instruction file as UTF-8") from exc
+
+
 def analyze(root):
     entries = []
     repeated = {}
     for path in discover(root):
-        try:
-            if path.is_symlink():
-                raise ValueError("Symbolic link input is not supported")
-            if path.stat().st_size > MAX_BYTES:
-                raise ValueError("Instruction file exceeds 2 MiB limit")
-            with path.open("rb") as stream:
-                raw = stream.read(MAX_BYTES + 1)
-            if len(raw) > MAX_BYTES:
-                raise ValueError("Instruction file exceeds 2 MiB limit")
-            content = raw.decode("utf-8-sig")
-        except (OSError, UnicodeError) as exc:
-            raise ValueError("Cannot read instruction file as UTF-8") from exc
+        raw, content = read_instruction(path)
         rel = str(path.relative_to(root)) if root.is_dir() else path.name
         entries.append({"path": rel, "bytes": len(raw), "lines": len(content.splitlines()),
                         "estimated_tokens": (len(content) + 3) // 4})
